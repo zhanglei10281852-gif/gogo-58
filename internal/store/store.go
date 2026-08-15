@@ -393,6 +393,12 @@ func (s *Store) VerifyAudit() (AuditVerification, error) {
 			verification.Reason = fmt.Sprintf("entry %d declares sequence %d", expectedSeq, entry.Seq)
 			return verification, nil
 		}
+		if entry.PrevHash != previous {
+			verification.Valid = false
+			verification.BrokenAt = entry.Seq
+			verification.Reason = fmt.Sprintf("entry %d links to %s but the previous head is %s", entry.Seq, short(entry.PrevHash), short(previous))
+			return verification, nil
+		}
 		expectedHash := DigestString(chainInput(entry))
 		if entry.Hash != expectedHash {
 			verification.Valid = false
