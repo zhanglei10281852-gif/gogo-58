@@ -400,6 +400,16 @@ func (s *Store) VerifyAudit() (AuditVerification, error) {
 			verification.Reason = fmt.Sprintf("entry %d hash %s does not match its content, expected %s", entry.Seq, short(entry.Hash), short(expectedHash))
 			return verification, nil
 		}
+		// Chaining: each entry must reference the hash of the entry before it.
+		// A self consistent entry spliced in from another log, or one moved from
+		// a different position, keeps its own hash valid but points its prevHash
+		// at the wrong predecessor, so only this check exposes the splice.
+		if entry.PrevHash != previous {
+			verification.Valid = false
+			verification.BrokenAt = entry.Seq
+			verification.Reason = fmt.Sprintf("entry %d prevHash %s does not link to previous hash %s", entry.Seq, short(entry.PrevHash), short(previous))
+			return verification, nil
+		}
 		previous = entry.Hash
 	}
 	verification.Head = previous
